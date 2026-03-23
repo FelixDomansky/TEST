@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
 let products = [];
 let order = [];
 
-// ===== загрузка БЕЗ КЭША =====
+// ===== загрузка =====
 function loadProducts() {
   fetch("products.json?t=" + Date.now())
     .then(res => res.json())
@@ -17,7 +17,6 @@ function loadProducts() {
 loadProducts();
 
 
-// ===== сумма прописью =====
 function numberToText(num) {
   if (!num) return "ноль рублей";
 
@@ -65,6 +64,15 @@ function numberToText(num) {
   let rub = Math.floor(num);
   let result = "";
 
+  // МИЛЛИОНЫ
+  if (rub >= 1000000) {
+    let millions = Math.floor(rub / 1000000);
+    result += parse(millions);
+    result += plural(millions, "миллион", "миллиона", "миллионов") + " ";
+    rub %= 1000000;
+  }
+
+  // ТЫСЯЧИ
   if (rub >= 1000) {
     let thousands = Math.floor(rub / 1000);
     result += parse(thousands, true);
@@ -72,12 +80,12 @@ function numberToText(num) {
     rub %= 1000;
   }
 
+  // ОСТАТОК
   result += parse(rub);
   result += plural(Math.floor(num), "рубль", "рубля", "рублей");
 
   return result.trim();
 }
-
 
 // ===== поиск =====
 document.getElementById("search").addEventListener("input", function () {
@@ -219,10 +227,9 @@ function render() {
 }
 
 
-// ===== НАКЛАДНАЯ =====
-// (оставил 100% без изменений)
-
+// ===== НАКЛАДНАЯ (ФИКС ПЕЧАТИ) =====
 function getPrintHTML() {
+
   const name = document.getElementById("name").value;
   const from = document.getElementById("from").value;
   const number = document.getElementById("invoiceNumber").value || "";
@@ -347,14 +354,52 @@ function getPrintHTML() {
   return `
   <html>
   <head>
+    <meta charset="utf-8">
+    <title></title>
+
     <style>
-      @page { size: A4; margin: 0; }
-      body { font-family: Arial; margin: 0; }
-      .page { width:210mm; height:297mm; padding:10mm; box-sizing:border-box; }
-      table { width:100%; border-collapse:collapse; border:2px solid black; font-size:12px; }
-      th,td { border:1px solid black; padding:5px; text-align:center; }
-      .cut { border-top:2px dashed black; margin:10mm 0; }
-      .date { text-align:right; }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: Arial;
+      }
+
+      .page {
+        width:210mm;
+        height:297mm;
+        padding:10mm;
+        box-sizing:border-box;
+      }
+
+      table {
+        width:100%;
+        border-collapse:collapse;
+        border:2px solid black;
+        font-size:12px;
+      }
+
+      th,td {
+        border:1px solid black;
+        padding:5px;
+        text-align:center;
+      }
+
+      .cut {
+        border-top:2px dashed black;
+        margin:10mm 0;
+      }
+
+      .date {
+        text-align:right;
+      }
     </style>
   </head>
   <body>${pages}</body>
@@ -368,6 +413,7 @@ window.printOrder = function() {
   iframe.style.position = "fixed";
   iframe.style.width = "0";
   iframe.style.height = "0";
+  iframe.style.border = "0";
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow.document;
@@ -375,6 +421,7 @@ window.printOrder = function() {
   doc.write(getPrintHTML());
   doc.close();
 
+  iframe.contentWindow.focus();
   iframe.contentWindow.print();
 
   setTimeout(() => document.body.removeChild(iframe), 1000);
@@ -386,7 +433,11 @@ window.downloadPDF = function() {
   const element = document.createElement("div");
   element.innerHTML = getPrintHTML();
 
-  html2pdf().from(element).save(
+  html2pdf().set({
+    margin: 0,
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  }).from(element).save(
     `Накладная_${document.getElementById("invoiceNumber").value || ""}.pdf`
   );
 };
