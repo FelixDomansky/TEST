@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
 let products = [];
 let order = [];
 
-// загрузка
+// ===== загрузка =====
 function loadProducts() {
   const CACHE_KEY = "products_cache";
 
@@ -27,7 +27,69 @@ function loadProducts() {
 loadProducts();
 
 
-// 🔥 поиск
+// ===== сумма прописью =====
+function numberToText(num) {
+  if (!num) return "ноль рублей";
+
+  const ones = ["","один","два","три","четыре","пять","шесть","семь","восемь","девять"];
+  const onesFemale = ["","одна","две"];
+  const teens = ["десять","одиннадцать","двенадцать","тринадцать","четырнадцать","пятнадцать","шестнадцать","семнадцать","восемнадцать","девятнадцать"];
+  const tens = ["","","двадцать","тридцать","сорок","пятьдесят","шестьдесят","семьдесят","восемьдесят","девяносто"];
+  const hundreds = ["","сто","двести","триста","четыреста","пятьсот","шестьсот","семьсот","восемьсот","девятьсот"];
+
+  function plural(n, one, two, five) {
+    n = Math.abs(n) % 100;
+    let n1 = n % 10;
+    if (n > 10 && n < 20) return five;
+    if (n1 > 1 && n1 < 5) return two;
+    if (n1 == 1) return one;
+    return five;
+  }
+
+  function parse(n, female = false) {
+    let str = "";
+
+    if (n >= 100) {
+      str += hundreds[Math.floor(n / 100)] + " ";
+      n %= 100;
+    }
+
+    if (n >= 10 && n <= 19) {
+      str += teens[n - 10] + " ";
+      return str;
+    }
+
+    if (n >= 20) {
+      str += tens[Math.floor(n / 10)] + " ";
+      n %= 10;
+    }
+
+    if (n > 0) {
+      str += female ? (n === 1 ? "одна" : n === 2 ? "две" : ones[n]) : ones[n];
+      str += " ";
+    }
+
+    return str;
+  }
+
+  let rub = Math.floor(num);
+  let result = "";
+
+  if (rub >= 1000) {
+    let thousands = Math.floor(rub / 1000);
+    result += parse(thousands, true);
+    result += plural(thousands, "тысяча", "тысячи", "тысяч") + " ";
+    rub %= 1000;
+  }
+
+  result += parse(rub);
+  result += plural(Math.floor(num), "рубль", "рубля", "рублей");
+
+  return result.trim();
+}
+
+
+// ===== поиск =====
 document.getElementById("search").addEventListener("input", function () {
   const value = this.value.toLowerCase();
   const box = document.getElementById("suggestions");
@@ -55,7 +117,25 @@ window.selectProduct = function(article, price) {
 };
 
 
-// добавить
+// ===== ENTER =====
+document.getElementById("search").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const first = document.querySelector("#suggestions div");
+    if (first) first.click();
+    addItem();
+  }
+});
+
+document.getElementById("qty").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    addItem();
+  }
+});
+
+
+// ===== добавить =====
 window.addItem = function() {
   const name = document.getElementById("search").value;
   let price = Number(document.getElementById("price").value);
@@ -73,28 +153,40 @@ window.addItem = function() {
 };
 
 
-// удалить
+// ===== удалить =====
 window.removeItem = function(index) {
   order.splice(index, 1);
   render();
 };
 
 
-// 🔥 количество
+// ===== обновление =====
 window.updateQty = function(index, input) {
   order[index].qty = Number(input.value) || 0;
   updateRowAndTotal(input.closest(".item"), index);
 };
 
-
-// 🔥 цена
 window.updatePrice = function(index, input) {
   order[index].price = Number(input.value) || 0;
   updateRowAndTotal(input.closest(".item"), index);
 };
 
+window.updateName = function(index, input) {
+  const value = input.value;
+  order[index].name = value;
 
-// 🔥 пересчёт
+  const found = products.find(p =>
+    String(p["Артикул"] || "").toLowerCase() === value.toLowerCase()
+  );
+
+  if (found) {
+    order[index].price = Number(found["Цена"] || 0);
+    updateRowAndTotal(input.closest(".item"), index);
+  }
+};
+
+
+// ===== пересчёт =====
 function updateRowAndTotal(item, index) {
   const sumEl = item.querySelector("b");
   sumEl.innerText = (order[index].price * order[index].qty) + " ₽";
@@ -106,7 +198,7 @@ function updateRowAndTotal(item, index) {
 }
 
 
-// render
+// ===== render =====
 function render() {
   const box = document.getElementById("order");
   box.innerHTML = "";
@@ -122,7 +214,7 @@ function render() {
     div.innerHTML = `
       <div class="item-number">№${index + 1}</div>
 
-      <input value="${i.name}" onchange="order[${index}].name=this.value">
+      <input value="${i.name}" onchange="updateName(${index}, this)">
       <input value="${i.qty}" type="number" oninput="updateQty(${index}, this)">
       <input value="${i.price}" type="number" oninput="updatePrice(${index}, this)">
       <b>${i.price * i.qty} ₽</b>
@@ -137,101 +229,154 @@ function render() {
 }
 
 
-// ===== НАКЛАДНАЯ (ТВОЯ, НЕ ТРОГАЛ) =====
-
+// ===== НАКЛАДНАЯ =====
 function getPrintHTML() {
 
   const name = document.getElementById("name").value;
   const from = document.getElementById("from").value;
   const number = document.getElementById("invoiceNumber").value || "";
 
-  let total = 0;
-  order.forEach(i => total += i.price * i.qty);
+  const ITEMS = 7;
 
-  let rows = "";
-  order.forEach((i, index) => {
-    rows += `
-      <tr>
-        <td>${index + 1}</td>
-        <td>${i.name}</td>
-        <td>шт</td>
-        <td>${i.qty}</td>
-        <td>${i.price}</td>
-        <td>${i.price * i.qty}</td>
-      </tr>
+  function chunk(arr) {
+    let r = [];
+    for (let i = 0; i < arr.length; i += ITEMS) {
+      r.push(arr.slice(i, i + ITEMS));
+    }
+    return r;
+  }
+
+  const chunks = chunk(order);
+
+  let grandTotal = 0;
+  order.forEach(i => grandTotal += i.price * i.qty);
+
+  function doc(items, startIndex = 0, isLast = false) {
+    let rows = "";
+    let total = 0;
+
+    items.forEach((i, index) => {
+      total += i.price * i.qty;
+
+      rows += `
+        <tr>
+          <td>${startIndex + index + 1}</td>
+          <td>${i.name}</td>
+          <td>шт</td>
+          <td>${i.qty}</td>
+          <td>${i.price}</td>
+          <td>${i.price * i.qty}</td>
+        </tr>
+      `;
+    });
+
+    return `
+      <div class="doc">
+        <div class="date">от «__» __________ 2026 г.</div>
+        <h2>НАКЛАДНАЯ № ${number || "________"}</h2>
+
+        <div><b>Кому:</b> ${name || ""}</div>
+        <div><b>От кого:</b> ${from}</div>
+
+        <table>
+          <tr>
+            <th>№</th>
+            <th>Наименование</th>
+            <th>Ед</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+            <th>Сумма</th>
+          </tr>
+
+          ${rows}
+
+          <tr>
+            <td colspan="6" style="text-align:left;">
+              <b>Итого:</b> ${total} ₽
+              <br>${numberToText(total)}
+            </td>
+          </tr>
+
+          ${isLast ? `
+          <tr>
+            <td colspan="6" style="text-align:left; font-weight:bold;">
+              Общая сумма по накладной: ${grandTotal} ₽
+            </td>
+          </tr>` : ""}
+
+        </table>
+
+        <div style="display:flex; justify-content:space-between; margin-top:40px; font-size:12px;">
+          <div style="width:45%;">
+            <div>Сдал:</div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <div style="flex:1; border-bottom:1px solid black;"></div>
+              <div style="flex:1; border-bottom:1px solid black;"></div>
+            </div>
+            <div style="display:flex; gap:10px; font-size:10px;">
+              <div style="flex:1;">подпись</div>
+              <div style="flex:1;">расшифровка подписи</div>
+            </div>
+          </div>
+
+          <div style="width:45%;">
+            <div>Принял:</div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <div style="flex:1; border-bottom:1px solid black;"></div>
+              <div style="flex:1; border-bottom:1px solid black;"></div>
+            </div>
+            <div style="display:flex; gap:10px; font-size:10px;">
+              <div style="flex:1;">подпись</div>
+              <div style="flex:1;">расшифровка подписи</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     `;
+  }
+
+  let pages = "";
+  let globalIndex = 0;
+
+  chunks.forEach((chunk, i) => {
+    const isLast = i === chunks.length - 1;
+
+    pages += `
+      <div class="page">
+        ${doc(chunk, globalIndex, isLast)}
+        <div class="cut"></div>
+        ${doc(chunk, globalIndex, isLast)}
+      </div>
+    `;
+
+    globalIndex += chunk.length;
   });
 
   return `
   <html>
   <head>
     <style>
-      body { font-family: Arial; }
-      table { width:100%; border-collapse:collapse; }
-      th, td { border:1px solid black; padding:5px; text-align:center; }
-      .cut { border-top:2px dashed black; margin:20px 0; }
+      @page { size: A4; margin: 0; }
+      body { font-family: Arial; margin: 0; }
+      .page { width:210mm; height:297mm; padding:10mm; box-sizing:border-box; }
+      table { width:100%; border-collapse:collapse; border:2px solid black; font-size:12px; }
+      th,td { border:1px solid black; padding:5px; text-align:center; }
+      .cut { border-top:2px dashed black; margin:10mm 0; }
+      .date { text-align:right; }
     </style>
   </head>
-  <body>
-
-  ${[1,2].map(() => `
-    <div>
-      <div style="text-align:right;">от «__» __________ 2026 г.</div>
-      <h2>НАКЛАДНАЯ № ${number || "________"}</h2>
-
-      <div><b>Кому:</b> ${name}</div>
-      <div><b>От кого:</b> ${from}</div>
-
-      <table>
-        <tr>
-          <th>№</th>
-          <th>Наименование</th>
-          <th>Ед</th>
-          <th>Кол-во</th>
-          <th>Цена</th>
-          <th>Сумма</th>
-        </tr>
-
-        ${rows}
-
-        <tr>
-          <td colspan="6" style="text-align:left;">
-            <b>Итого:</b> ${total} ₽
-          </td>
-        </tr>
-
-        <tr>
-          <td colspan="6" style="text-align:left;">
-            <b>Общая сумма по накладной:</b> ${total} ₽
-          </td>
-        </tr>
-      </table>
-
-      <br><br>
-
-      <div style="display:flex; justify-content:space-between;">
-        <div>Сдал:<br><br>__________________</div>
-        <div>Принял:<br><br>__________________</div>
-      </div>
-    </div>
-  `).join('<div class="cut"></div>')}
-
-  </body>
-  </html>
-  `;
+  <body>${pages}</body>
+  </html>`;
 }
 
 
-// печать
+// ===== печать =====
 window.printOrder = function() {
   const iframe = document.createElement("iframe");
   iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
   iframe.style.width = "0";
   iframe.style.height = "0";
-  iframe.style.border = "0";
-
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow.document;
@@ -239,22 +384,24 @@ window.printOrder = function() {
   doc.write(getPrintHTML());
   doc.close();
 
-  iframe.contentWindow.focus();
   iframe.contentWindow.print();
 
-  setTimeout(() => {
-    document.body.removeChild(iframe);
-  }, 1000);
+  setTimeout(() => document.body.removeChild(iframe), 1000);
 };
 
 
-// PDF
+// ===== PDF =====
 window.downloadPDF = function() {
-  window.printOrder();
+  const element = document.createElement("div");
+  element.innerHTML = getPrintHTML();
+
+  html2pdf().from(element).save(
+    `Накладная_${document.getElementById("invoiceNumber").value || ""}.pdf`
+  );
 };
 
 
-// очистка
+// ===== очистка =====
 window.clearOrder = function() {
   order = [];
   render();
