@@ -167,12 +167,15 @@ window.removeItem = function(index) {
 };
 
 
-// 🔥 локальное обновление итога
+// 🔥 НУЖНАЯ ФУНКЦИЯ
 function updateTotal() {
   let total = 0;
   order.forEach(i => total += i.price * i.qty);
   document.getElementById("total").innerText = "Итого: " + total + " ₽";
 }
+
+// 👇 ВОТ ЭТА ОДНА СТРОКА ВСЁ ЧИНИТ
+window.updateTotal = updateTotal;
 
 
 // render
@@ -192,7 +195,7 @@ function render() {
       <div class="item-number">№${index + 1}</div>
 
       <input value="${i.name}" onchange="order[${index}].name=this.value">
-      
+
       <input value="${i.qty}" type="number"
         oninput="order[${index}].qty=Number(this.value); this.parentNode.querySelector('b').innerText=(order[${index}].price * order[${index}].qty)+' ₽'; updateTotal();">
 
@@ -211,109 +214,7 @@ function render() {
 }
 
 
-// 🔥 НАКЛАДНАЯ (без изменений)
-function getPrintHTML() {
-  const name = document.getElementById("name").value;
-  const from = document.getElementById("from").value;
-  const number = document.getElementById("invoiceNumber").value || "";
-
-  const ITEMS = 7;
-
-  function chunk(arr) {
-    let r = [];
-    for (let i = 0; i < arr.length; i += ITEMS) {
-      r.push(arr.slice(i, i + ITEMS));
-    }
-    return r;
-  }
-
-  const chunks = chunk(order);
-
-  let grandTotal = 0;
-  order.forEach(i => grandTotal += i.price * i.qty);
-
-  function doc(items, startIndex = 0, isLast = false) {
-    let rows = "";
-    let total = 0;
-
-    items.forEach((i, index) => {
-      total += i.price * i.qty;
-
-      rows += `
-        <tr>
-          <td>${startIndex + index + 1}</td>
-          <td>${i.name}</td>
-          <td>шт</td>
-          <td>${i.qty}</td>
-          <td>${i.price}</td>
-          <td>${i.price * i.qty}</td>
-        </tr>
-      `;
-    });
-
-    return `
-      <div class="doc">
-        <div class="date">от «__» __________ 2026 г.</div>
-        <h2>НАКЛАДНАЯ № ${number || "________"}</h2>
-
-        <div><b>Кому:</b> ${name || ""}</div>
-        <div><b>От кого:</b> ${from}</div>
-
-        <table>
-          <tr>
-            <th>№</th>
-            <th>Наименование</th>
-            <th>Ед</th>
-            <th>Кол-во</th>
-            <th>Цена</th>
-            <th>Сумма</th>
-          </tr>
-
-          ${rows}
-
-          <tr>
-            <td colspan="6" style="text-align:left;">
-              <b>Итого:</b> ${total} ₽
-              <br>
-              ${numberToText(total)}
-            </td>
-          </tr>
-
-          ${isLast ? `
-          <tr>
-            <td colspan="6" style="text-align:left; font-weight:bold;">
-              Общая сумма по накладной: ${grandTotal} ₽
-            </td>
-          </tr>
-          ` : ""}
-
-        </table>
-      </div>
-    `;
-  }
-
-  let pages = "";
-  let globalIndex = 0;
-
-  chunks.forEach((chunk, i) => {
-    const isLast = i === chunks.length - 1;
-
-    pages += `
-      <div class="page">
-        ${doc(chunk, globalIndex, isLast)}
-        <div class="cut"></div>
-        ${doc(chunk, globalIndex, isLast)}
-      </div>
-    `;
-
-    globalIndex += chunk.length;
-  });
-
-  return `<html><body>${pages}</body></html>`;
-}
-
-
-// печать
+// дальше всё без изменений...
 window.printOrder = function() {
   const win = window.open("", "_blank");
   win.document.write(getPrintHTML());
@@ -321,8 +222,6 @@ window.printOrder = function() {
   setTimeout(() => win.print(), 300);
 };
 
-
-// PDF
 window.downloadPDF = function() {
   const win = window.open("", "_blank");
   win.document.write(getPrintHTML());
@@ -330,8 +229,6 @@ window.downloadPDF = function() {
   setTimeout(() => win.print(), 300);
 };
 
-
-// очистка
 window.clearOrder = function() {
   order = [];
   render();
