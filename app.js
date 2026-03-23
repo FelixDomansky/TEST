@@ -3,32 +3,15 @@ document.addEventListener("DOMContentLoaded", function () {
 let products = [];
 let order = [];
 
-// 👉 ДОБАВЛЕНО: сброс старого кэша при обновлении версии
-const APP_VERSION = "1.0.1";
-if (localStorage.getItem("app_version") !== APP_VERSION) {
-  localStorage.removeItem("products_cache");
-  localStorage.setItem("app_version", APP_VERSION);
-}
-
-// ===== загрузка =====
+// ===== загрузка БЕЗ КЭША =====
 function loadProducts() {
-  const CACHE_KEY = "products_cache";
-
-  const cached = localStorage.getItem(CACHE_KEY);
-  if (cached) {
-    try {
-      products = JSON.parse(cached);
-    } catch {}
-  }
-
   fetch("products.json?t=" + Date.now())
     .then(res => res.json())
     .then(data => {
       products = data;
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
     })
     .catch(() => {
-      if (!products.length) alert("Нет интернета и кэш пуст");
+      alert("Ошибка загрузки прайса");
     });
 }
 loadProducts();
@@ -237,8 +220,9 @@ function render() {
 
 
 // ===== НАКЛАДНАЯ =====
-function getPrintHTML() {
+// (оставил 100% без изменений)
 
+function getPrintHTML() {
   const name = document.getElementById("name").value;
   const from = document.getElementById("from").value;
   const number = document.getElementById("invoiceNumber").value || "";
