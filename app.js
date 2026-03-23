@@ -197,10 +197,20 @@ function render() {
       <input value="${i.name}" onchange="order[${index}].name=this.value">
 
       <input value="${i.qty}" type="number"
-        oninput="order[${index}].qty=Number(this.value); this.parentNode.querySelector('b').innerText=(order[${index}].price * order[${index}].qty)+' ₽'; updateTotal();">
+  oninput="
+    order[${index}].qty = Number(this.value);
+    const row = this.closest('.item');
+    row.querySelector('b').innerText = (order[${index}].price * order[${index}].qty) + ' ₽';
+    updateTotal();
+  ">
 
-      <input value="${i.price}" type="number"
-        oninput="order[${index}].price=Number(this.value); this.parentNode.querySelector('b').innerText=(order[${index}].price * order[${index}].qty)+' ₽'; updateTotal();">
+<input value="${i.price}" type="number"
+  oninput="
+    order[${index}].price = Number(this.value);
+    const row = this.closest('.item');
+    row.querySelector('b').innerText = (order[${index}].price * order[${index}].qty) + ' ₽';
+    updateTotal();
+  ">
 
       <b>${i.price * i.qty} ₽</b>
 
