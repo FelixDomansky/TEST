@@ -27,7 +27,7 @@ function loadProducts() {
 loadProducts();
 
 
-// ===== СУММА ПРОПИСЬЮ (БЕЗ undefined)
+// ===== СУММА ПРОПИСЬЮ
 function numberToText(num) {
   if (!num) return "ноль рублей";
 
@@ -124,24 +124,6 @@ window.selectProduct = function(article, price) {
 };
 
 
-// ENTER
-document.getElementById("search").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    const first = document.querySelector("#suggestions div");
-    if (first) first.click();
-    addItem();
-  }
-});
-
-document.getElementById("qty").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    addItem();
-  }
-});
-
-
 // добавить
 window.addItem = function() {
   const name = document.getElementById("search").value;
@@ -167,15 +149,22 @@ window.removeItem = function(index) {
 };
 
 
-// 🔥 НУЖНАЯ ФУНКЦИЯ
-function updateTotal() {
-  let total = 0;
-  order.forEach(i => total += i.price * i.qty);
-  document.getElementById("total").innerText = "Итого: " + total + " ₽";
-}
+// 🔥 ВОТ КЛЮЧЕВОЙ FIX
+window.updateItem = function(index, input) {
+  const value = input.value;
 
-// 👇 ВОТ ЭТА ОДНА СТРОКА ВСЁ ЧИНИТ
-window.updateTotal = updateTotal;
+  order[index].name = value;
+
+  const found = products.find(p =>
+    String(p['Артикул']).toLowerCase().includes(value.toLowerCase().trim())
+  );
+
+  if (found && found['Цена'] != null) {
+    order[index].price = Number(found['Цена']);
+  }
+
+  render();
+};
 
 
 // render
@@ -194,24 +183,9 @@ function render() {
     div.innerHTML = `
       <div class="item-number">№${index + 1}</div>
 
-      <input value="${i.name}" onchange="order[${index}].name=this.value">
-
-      <input value="${i.qty}" type="number"
-  oninput="
-    order[${index}].qty = Number(this.value);
-    const row = this.closest('.item');
-    row.querySelector('b').innerText = (order[${index}].price * order[${index}].qty) + ' ₽';
-    updateTotal();
-  ">
-
-<input value="${i.price}" type="number"
-  oninput="
-    order[${index}].price = Number(this.value);
-    const row = this.closest('.item');
-    row.querySelector('b').innerText = (order[${index}].price * order[${index}].qty) + ' ₽';
-    updateTotal();
-  ">
-
+      <input value="${i.name}" oninput="updateItem(${index}, this)">
+      <input value="${i.qty}" type="number" onchange="order[${index}].qty=Number(this.value); render();">
+      <input value="${i.price}" type="number" onchange="order[${index}].price=Number(this.value); render();">
       <b>${i.price * i.qty} ₽</b>
 
       <button onclick="removeItem(${index})">Удалить</button>
@@ -222,26 +196,5 @@ function render() {
 
   document.getElementById("total").innerText = "Итого: " + total + " ₽";
 }
-
-
-// дальше всё без изменений...
-window.printOrder = function() {
-  const win = window.open("", "_blank");
-  win.document.write(getPrintHTML());
-  win.document.close();
-  setTimeout(() => win.print(), 300);
-};
-
-window.downloadPDF = function() {
-  const win = window.open("", "_blank");
-  win.document.write(getPrintHTML());
-  win.document.close();
-  setTimeout(() => win.print(), 300);
-};
-
-window.clearOrder = function() {
-  order = [];
-  render();
-};
 
 });
