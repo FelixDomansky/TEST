@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Накладные</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- PDF библиотека -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+
+<h3>Клиент</h3>
+<input id="name" placeholder="ФИО / организация (или оставить пустым)">
+
+<h3>От кого</h3>
+<select id="from">
+  <option>ИП Курбатова Л.И</option>
+</select>
+
+<h3>Номер накладной</h3>
+<input id="invoiceNumber" placeholder="Введите номер (необязательно)">
+
+<h3>Добавить товар</h3>
+
+<input id="search" placeholder="Начните вводить артикул или введите вручную">
+<div id="suggestions"></div>
+
+<input id="price" placeholder="Цена">
+<input id="qty" type="number" placeholder="Количество">
+
+<button onclick="addItem()">Добавить</button>
+
+<h3>Заказ</h3>
+<div id="order"></div>
+
+<h3 id="total">Итого: 0 ₽</h3>
+
+<button onclick="printOrder()">Печать</button>
+<button onclick="downloadPDF()">Скачать PDF</button>
+<button onclick="clearOrder()">Очистить</button>
+
+<script src="app.js"></script>
+
+</body>
+</html>
