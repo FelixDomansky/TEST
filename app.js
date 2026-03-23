@@ -99,31 +99,6 @@ function numberToText(num) {
 }
 
 
-// поиск
-document.getElementById("search").addEventListener("input", function () {
-  const value = this.value.toLowerCase();
-  const box = document.getElementById("suggestions");
-
-  if (!value || !products.length) return box.innerHTML = "";
-
-  const results = products
-    .filter(p => String(p["Артикул"] || "").toLowerCase().includes(value))
-    .slice(0, 5);
-
-  box.innerHTML = results.map(p => `
-    <div onclick="selectProduct('${p["Артикул"]}', ${Number(p["Цена"])})">
-      ${p["Артикул"]} (${p["Цена"]} ₽)
-    </div>
-  `).join("");
-});
-
-window.selectProduct = function(article, price) {
-  document.getElementById("search").value = article;
-  document.getElementById("price").value = price;
-  document.getElementById("suggestions").innerHTML = "";
-};
-
-
 // добавить
 window.addItem = function() {
   const name = document.getElementById("search").value;
@@ -149,22 +124,30 @@ window.removeItem = function(index) {
 };
 
 
-// 🔥 ВОТ КЛЮЧЕВОЙ FIX
-window.updateItem = function(index, input) {
-  const value = input.value;
-
-  order[index].name = value;
-
-  const found = products.find(p =>
-    String(p['Артикул']).toLowerCase().includes(value.toLowerCase().trim())
-  );
-
-  if (found && found['Цена'] != null) {
-    order[index].price = Number(found['Цена']);
-  }
-
-  render();
+// 🔥 количество
+window.updateQty = function(index, input) {
+  order[index].qty = Number(input.value) || 0;
+  updateRowAndTotal(input.closest(".item"), index);
 };
+
+
+// 🔥 цена
+window.updatePrice = function(index, input) {
+  order[index].price = Number(input.value) || 0;
+  updateRowAndTotal(input.closest(".item"), index);
+};
+
+
+// 🔥 пересчёт
+function updateRowAndTotal(item, index) {
+  const sumEl = item.querySelector("b");
+  sumEl.innerText = (order[index].price * order[index].qty) + " ₽";
+
+  let total = 0;
+  order.forEach(i => total += i.price * i.qty);
+
+  document.getElementById("total").innerText = "Итого: " + total + " ₽";
+}
 
 
 // render
@@ -183,9 +166,9 @@ function render() {
     div.innerHTML = `
       <div class="item-number">№${index + 1}</div>
 
-      <input value="${i.name}" oninput="updateItem(${index}, this)">
-      <input value="${i.qty}" type="number" onchange="order[${index}].qty=Number(this.value); render();">
-      <input value="${i.price}" type="number" onchange="order[${index}].price=Number(this.value); render();">
+      <input value="${i.name}" onchange="order[${index}].name=this.value">
+      <input value="${i.qty}" type="number" oninput="updateQty(${index}, this)">
+      <input value="${i.price}" type="number" oninput="updatePrice(${index}, this)">
       <b>${i.price * i.qty} ₽</b>
 
       <button onclick="removeItem(${index})">Удалить</button>
@@ -196,5 +179,223 @@ function render() {
 
   document.getElementById("total").innerText = "Итого: " + total + " ₽";
 }
+
+
+// ===== ВСЁ НИЖЕ НЕ ТРОГАЛ (НАКЛАДНАЯ, ПЕЧАТЬ И Т.Д.) =====
+
+
+// 🔥 НАКЛАДНАЯ
+function getPrintHTML() {
+
+  const name = document.getElementById("name").value;
+  const from = document.getElementById("from").value;
+  const number = document.getElementById("invoiceNumber").value || "";
+
+  const ITEMS = 7;
+
+  function chunk(arr) {
+    let r = [];
+    for (let i = 0; i < arr.length; i += ITEMS) {
+      r.push(arr.slice(i, i + ITEMS));
+    }
+    return r;
+  }
+
+  const chunks = chunk(order);
+
+  let grandTotal = 0;
+  order.forEach(i => grandTotal += i.price * i.qty);
+
+  function doc(items, startIndex = 0, isLast = false) {
+    let rows = "";
+    let total = 0;
+
+    items.forEach((i, index) => {
+      total += i.price * i.qty;
+
+      rows += `
+        <tr>
+          <td>${startIndex + index + 1}</td>
+          <td>${i.name}</td>
+          <td>шт</td>
+          <td>${i.qty}</td>
+          <td>${i.price}</td>
+          <td>${i.price * i.qty}</td>
+        </tr>
+      `;
+    });
+
+    return `
+      <div class="doc">
+        <div class="date">от «__» __________ 2026 г.</div>
+        <h2>НАКЛАДНАЯ № ${number || "________"}</h2>
+
+        <div><b>Кому:</b> ${name || ""}</div>
+        <div><b>От кого:</b> ${from}</div>
+
+        <table>
+          <tr>
+            <th>№</th>
+            <th>Наименование</th>
+            <th>Ед</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+            <th>Сумма</th>
+          </tr>
+
+          ${rows}
+
+          <tr>
+            <td colspan="6" style="text-align:left;">
+              <b>Итого:</b> ${total} ₽
+              <br>
+              ${numberToText(total)}
+            </td>
+          </tr>
+
+          ${isLast ? `
+          <tr>
+            <td colspan="6" style="text-align:left; font-weight:bold;">
+              Общая сумма по накладной: ${grandTotal} ₽
+            </td>
+          </tr>
+          ` : ""}
+
+        </table>
+
+        <div class="sign">
+          <div class="sign-block">
+            Сдал:
+            <div class="line"></div>
+            <div class="sub">
+              <span>подпись</span>
+              <span>расшифровка подписи</span>
+            </div>
+          </div>
+
+          <div class="sign-block">
+            Принял:
+            <div class="line"></div>
+            <div class="sub">
+              <span>подпись</span>
+              <span>расшифровка подписи</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  let pages = "";
+  let globalIndex = 0;
+
+  chunks.forEach((chunk, i) => {
+    const isLast = i === chunks.length - 1;
+
+    pages += `
+      <div class="page">
+        ${doc(chunk, globalIndex, isLast)}
+        <div class="cut"></div>
+        ${doc(chunk, globalIndex, isLast)}
+      </div>
+    `;
+
+    globalIndex += chunk.length;
+  });
+
+  return `
+  <html>
+  <head>
+    <style>
+      @page { size: A4; margin: 0; }
+      body { font-family: Arial; margin: 0; }
+
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 10mm;
+        box-sizing: border-box;
+      }
+
+      .doc {
+        height: 135mm;
+      }
+
+      table {
+        width:100%;
+        border-collapse:collapse;
+        border:2px solid black;
+        font-size:12px;
+      }
+
+      th,td {
+        border:1px solid black;
+        padding:5px;
+        text-align:center;
+      }
+
+      .sign {
+        margin-top:15px;
+        display:flex;
+        justify-content:space-between;
+      }
+
+      .sign-block {
+        width:45%;
+        font-size:12px;
+      }
+
+      .line {
+        border-bottom:1px solid black;
+        height:20px;
+        margin-top:5px;
+      }
+
+      .sub {
+        display:flex;
+        justify-content:space-between;
+        font-size:10px;
+      }
+
+      .date { text-align:right; }
+
+      .cut {
+        height:5mm;
+        border-top:2px dashed black;
+        margin:5mm 0;
+      }
+    </style>
+  </head>
+  <body>
+    ${pages}
+  </body>
+  </html>
+  `;
+}
+
+
+// печать
+window.printOrder = function() {
+  const win = window.open("", "_blank");
+  win.document.write(getPrintHTML());
+  win.document.close();
+  setTimeout(() => win.print(), 300);
+};
+
+
+// PDF
+window.downloadPDF = function() {
+  const win = window.open("", "_blank");
+  win.document.write(getPrintHTML());
+  win.document.close();
+  setTimeout(() => win.print(), 300);
+};
+
+
+// очистка
+window.clearOrder = function() {
+  order = [];
+  render();
+};
 
 });
