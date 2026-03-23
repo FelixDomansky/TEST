@@ -224,10 +224,27 @@ function getPrintHTML() {
 
 // печать
 window.printOrder = function() {
-  const win = window.open("", "_blank");
-  win.document.write(getPrintHTML());
-  win.document.close();
-  setTimeout(() => win.print(), 300);
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(getPrintHTML());
+  doc.close();
+
+  iframe.contentWindow.focus();
+  iframe.contentWindow.print();
+
+  setTimeout(() => {
+    document.body.removeChild(iframe);
+  }, 1000);
 };
 
 
