@@ -3,6 +3,13 @@ document.addEventListener("DOMContentLoaded", function () {
 let products = [];
 let order = [];
 
+// 👉 ДОБАВЛЕНО: сброс старого кэша при обновлении версии
+const APP_VERSION = "1.0.1";
+if (localStorage.getItem("app_version") !== APP_VERSION) {
+  localStorage.removeItem("products_cache");
+  localStorage.setItem("app_version", APP_VERSION);
+}
+
 // ===== загрузка =====
 function loadProducts() {
   const CACHE_KEY = "products_cache";
