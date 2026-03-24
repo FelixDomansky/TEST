@@ -5,17 +5,29 @@ let order = [];
 
 // ===== загрузка =====
 function loadProducts() {
+  const CACHE_KEY = "products_cache";
+
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    try {
+      products = JSON.parse(cached);
+    } catch {}
+  }
+
   fetch("products.json?t=" + Date.now())
     .then(res => res.json())
     .then(data => {
       products = data;
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
     })
     .catch(() => {
-      alert("Ошибка загрузки прайса");
+      if (!products.length) alert("Нет интернета и кэш пуст");
     });
 }
 loadProducts();
 
+
+// ===== СУММА ПРОПИСЬЮ =====
 function numberToText(num) {
   if (!num) return "ноль рублей";
 
@@ -83,15 +95,13 @@ function numberToText(num) {
   return result.trim();
 }
 
+
 // ===== поиск =====
 document.getElementById("search").addEventListener("input", function () {
   const value = this.value.toLowerCase();
   const box = document.getElementById("suggestions");
 
-  if (!value || !products.length) {
-    box.innerHTML = "";
-    return;
-  }
+  if (!value || !products.length) return box.innerHTML = "";
 
   const results = products
     .filter(p => String(p["Артикул"] || "").toLowerCase().includes(value))
@@ -110,27 +120,11 @@ window.selectProduct = function(article, price) {
   document.getElementById("suggestions").innerHTML = "";
 };
 
-// ===== ENTER =====
-document.getElementById("search").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    const first = document.querySelector("#suggestions div");
-    if (first) first.click();
-    addItem();
-  }
-});
 
-document.getElementById("qty").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    addItem();
-  }
-});
-
-// ===== добавить =====
+// ===== ДОБАВИТЬ =====
 window.addItem = function() {
   const name = document.getElementById("search").value;
-  let price = Number(document.getElementById("price").value);
+  const price = Number(document.getElementById("price").value);
   const qty = Number(document.getElementById("qty").value) || 1;
 
   if (!name) return;
@@ -144,47 +138,34 @@ window.addItem = function() {
   render();
 };
 
+
 // ===== удалить =====
 window.removeItem = function(index) {
   order.splice(index, 1);
   render();
 };
 
+
 // ===== обновление =====
 window.updateQty = function(index, input) {
   order[index].qty = Number(input.value) || 0;
-  updateRowAndTotal(input.closest(".item"), index);
+  updateTotals(input.closest(".item"), index);
 };
 
 window.updatePrice = function(index, input) {
   order[index].price = Number(input.value) || 0;
-  updateRowAndTotal(input.closest(".item"), index);
+  updateTotals(input.closest(".item"), index);
 };
 
-window.updateName = function(index, input) {
-  const value = input.value;
-  order[index].name = value;
-
-  const found = products.find(p =>
-    String(p["Артикул"] || "").toLowerCase() === value.toLowerCase()
-  );
-
-  if (found) {
-    order[index].price = Number(found["Цена"] || 0);
-    updateRowAndTotal(input.closest(".item"), index);
-  }
-};
-
-// ===== пересчёт =====
-function updateRowAndTotal(item, index) {
-  const sumEl = item.querySelector("b");
-  sumEl.innerText = (order[index].price * order[index].qty) + " ₽";
+function updateTotals(item, index) {
+  const sum = order[index].price * order[index].qty;
+  item.querySelector("b").innerText = sum + " ₽";
 
   let total = 0;
   order.forEach(i => total += i.price * i.qty);
-
   document.getElementById("total").innerText = "Итого: " + total + " ₽";
 }
+
 
 // ===== render =====
 function render() {
@@ -201,7 +182,7 @@ function render() {
 
     div.innerHTML = `
       <div class="item-number">№${index + 1}</div>
-      <input value="${i.name}" onchange="updateName(${index}, this)">
+      <input value="${i.name}">
       <input value="${i.qty}" type="number" oninput="updateQty(${index}, this)">
       <input value="${i.price}" type="number" oninput="updatePrice(${index}, this)">
       <b>${i.price * i.qty} ₽</b>
@@ -214,6 +195,7 @@ function render() {
   document.getElementById("total").innerText = "Итого: " + total + " ₽";
 }
 
+
 // ===== НАКЛАДНАЯ =====
 function getPrintHTML() {
 
@@ -224,11 +206,11 @@ function getPrintHTML() {
   const ITEMS = 7;
 
   function chunk(arr) {
-    let r = [];
+    let res = [];
     for (let i = 0; i < arr.length; i += ITEMS) {
-      r.push(arr.slice(i, i + ITEMS));
+      res.push(arr.slice(i, i + ITEMS));
     }
-    return r;
+    return res;
   }
 
   const chunks = chunk(order);
@@ -236,7 +218,8 @@ function getPrintHTML() {
   let grandTotal = 0;
   order.forEach(i => grandTotal += i.price * i.qty);
 
-  function doc(items, startIndex = 0, isLast = false) {
+  function doc(items, startIndex, isLastPage) {
+
     let rows = "";
     let total = 0;
 
@@ -256,68 +239,56 @@ function getPrintHTML() {
     });
 
     return `
-      <div class="doc">
-        <div class="date">от «__» __________ 2026 г.</div>
-        <h2>НАКЛАДНАЯ № ${number || "________"}</h2>
+    <div class="doc">
+      <div style="text-align:right;">от «__» __________ 2026 г.</div>
+      <h2>НАКЛАДНАЯ № ${number || "________"}</h2>
 
-        <div><b>Кому:</b> ${name || ""}</div>
-        <div><b>От кого:</b> ${from}</div>
+      <div><b>Кому:</b> ${name}</div>
+      <div><b>От кого:</b> ${from}</div>
 
-        <table>
-          <tr>
-            <th>№</th>
-            <th>Наименование</th>
-            <th>Ед</th>
-            <th>Кол-во</th>
-            <th>Цена</th>
-            <th>Сумма</th>
-          </tr>
+      <table>
+        <tr>
+          <th>№</th>
+          <th>Наименование</th>
+          <th>Ед</th>
+          <th>Кол-во</th>
+          <th>Цена</th>
+          <th>Сумма</th>
+        </tr>
 
-          ${rows}
+        ${rows}
 
-          <tr>
-            <td colspan="6" style="text-align:left;">
-              <b>Итого:</b> ${total} ₽
-              <br>${numberToText(total)}
-            </td>
-          </tr>
+        <tr>
+          <td colspan="6" style="text-align:left;">
+            <b>Итого:</b> ${total} ₽
+            <br>${numberToText(total)}
+          </td>
+        </tr>
 
-          ${isLast ? `
-          <tr>
-            <td colspan="6" style="text-align:left; font-weight:bold;">
-              Общая сумма по накладной: ${grandTotal} ₽
-            </td>
-          </tr>` : ""}
+        ${isLastPage ? `
+        <tr>
+          <td colspan="6" style="text-align:left; font-weight:bold;">
+            Общая сумма по накладной: ${grandTotal} ₽
+          </td>
+        </tr>
+        ` : ""}
 
-        </table>
+      </table>
 
-        <div style="display:flex; justify-content:space-between; margin-top:40px; font-size:12px;">
-          <div style="width:45%;">
-            <div>Сдал:</div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-              <div style="flex:1; border-bottom:1px solid black;"></div>
-              <div style="flex:1; border-bottom:1px solid black;"></div>
-            </div>
-            <div style="display:flex; gap:10px; font-size:10px;">
-              <div style="flex:1;">подпись</div>
-              <div style="flex:1;">расшифровка подписи</div>
-            </div>
-          </div>
-
-          <div style="width:45%;">
-            <div>Принял:</div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-              <div style="flex:1; border-bottom:1px solid black;"></div>
-              <div style="flex:1; border-bottom:1px solid black;"></div>
-            </div>
-            <div style="display:flex; gap:10px; font-size:10px;">
-              <div style="flex:1;">подпись</div>
-              <div style="flex:1;">расшифровка подписи</div>
-            </div>
-          </div>
+      <div style="display:flex; justify-content:space-between; margin-top:20px;">
+        <div style="width:45%;">
+          Сдал:
+          <div style="border-bottom:1px solid black; margin-top:20px;"></div>
+          <div style="font-size:10px;">подпись / расшифровка</div>
         </div>
 
+        <div style="width:45%;">
+          Принял:
+          <div style="border-bottom:1px solid black; margin-top:20px;"></div>
+          <div style="font-size:10px;">подпись / расшифровка</div>
+        </div>
       </div>
+    </div>
     `;
   }
 
@@ -341,41 +312,65 @@ function getPrintHTML() {
   return `
   <html>
   <head>
-    <meta charset="utf-8">
     <style>
       @page { size: A4; margin: 0; }
-      body { font-family: Arial; margin: 0; }
-      .page { width:210mm; height:297mm; padding:10mm; box-sizing:border-box; }
-      table { width:100%; border-collapse:collapse; border:2px solid black; font-size:12px; }
-      th,td { border:1px solid black; padding:5px; text-align:center; }
-      .cut { border-top:2px dashed black; margin:10mm 0; }
-      .date { text-align:right; }
+      body { margin: 0; font-family: Arial; }
+
+      .page {
+        width:190mm;
+        height:277mm;
+        padding:10mm;
+        box-sizing:border-box;
+        page-break-after: always;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+      }
+
+      .doc {
+        height:130mm;
+      }
+
+      table {
+        width:100%;
+        border-collapse:collapse;
+        border:2px solid black;
+        font-size:12px;
+      }
+
+      th,td {
+        border:1px solid black;
+        padding:5px;
+        text-align:center;
+      }
+
+      .cut {
+        border-top:2px dashed black;
+        margin:8mm 0;
+      }
     </style>
   </head>
-  <body>${pages}</body>
-  </html>`;
+  <body>
+    ${pages}
+  </body>
+  </html>
+  `;
 }
+
 
 // ===== печать =====
 window.printOrder = function() {
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(getPrintHTML());
-  doc.close();
-
-  iframe.contentWindow.print();
-
-  setTimeout(() => document.body.removeChild(iframe), 1000);
+  const win = window.open("", "_blank");
+  win.document.write(getPrintHTML());
+  win.document.close();
+  setTimeout(() => win.print(), 300);
 };
+
 
 // ===== PDF =====
 window.downloadPDF = function() {
+
   const iframe = document.createElement("iframe");
   iframe.style.position = "fixed";
   iframe.style.width = "0";
@@ -387,16 +382,21 @@ window.downloadPDF = function() {
   doc.write(getPrintHTML());
   doc.close();
 
-  html2pdf().set({
-    margin: 0,
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  }).from(doc.body).save(
-    `Накладная_${document.getElementById("invoiceNumber").value || ""}.pdf`
-  );
+  iframe.onload = function() {
 
-  setTimeout(() => document.body.removeChild(iframe), 1000);
+    const pages = iframe.contentWindow.document.querySelectorAll(".page");
+
+    html2pdf().set({
+      margin: 0,
+      filename: 'nakladnaya.pdf',
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4' }
+    }).from(pages).save();
+
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+  };
 };
+
 
 // ===== очистка =====
 window.clearOrder = function() {
