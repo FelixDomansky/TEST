@@ -206,11 +206,11 @@ function getPrintHTML() {
   const ITEMS = 7;
 
   function chunk(arr) {
-    let res = [];
+    let r = [];
     for (let i = 0; i < arr.length; i += ITEMS) {
-      res.push(arr.slice(i, i + ITEMS));
+      r.push(arr.slice(i, i + ITEMS));
     }
-    return res;
+    return r;
   }
 
   const chunks = chunk(order);
@@ -218,8 +218,7 @@ function getPrintHTML() {
   let grandTotal = 0;
   order.forEach(i => grandTotal += i.price * i.qty);
 
-  function doc(items, startIndex, isLastPage) {
-
+  function doc(items, startIndex = 0, isLast = false) {
     let rows = "";
     let total = 0;
 
@@ -239,56 +238,68 @@ function getPrintHTML() {
     });
 
     return `
-    <div class="doc">
-      <div style="text-align:right;">от «__» __________ 2026 г.</div>
-      <h2>НАКЛАДНАЯ № ${number || "________"}</h2>
+      <div class="doc">
+        <div class="date">от «__» __________ 2026 г.</div>
+        <h2>НАКЛАДНАЯ № ${number || "________"}</h2>
 
-      <div><b>Кому:</b> ${name}</div>
-      <div><b>От кого:</b> ${from}</div>
+        <div><b>Кому:</b> ${name || ""}</div>
+        <div><b>От кого:</b> ${from}</div>
 
-      <table>
-        <tr>
-          <th>№</th>
-          <th>Наименование</th>
-          <th>Ед</th>
-          <th>Кол-во</th>
-          <th>Цена</th>
-          <th>Сумма</th>
-        </tr>
+        <table>
+          <tr>
+            <th>№</th>
+            <th>Наименование</th>
+            <th>Ед</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+            <th>Сумма</th>
+          </tr>
 
-        ${rows}
+          ${rows}
 
-        <tr>
-          <td colspan="6" style="text-align:left;">
-            <b>Итого:</b> ${total} ₽
-            <br>${numberToText(total)}
-          </td>
-        </tr>
+          <tr>
+            <td colspan="6" style="text-align:left;">
+              <b>Итого:</b> ${total} ₽
+              <br>${numberToText(total)}
+            </td>
+          </tr>
 
-        ${isLastPage ? `
-        <tr>
-          <td colspan="6" style="text-align:left; font-weight:bold;">
-            Общая сумма по накладной: ${grandTotal} ₽
-          </td>
-        </tr>
-        ` : ""}
+          ${isLast ? `
+          <tr>
+            <td colspan="6" style="text-align:left; font-weight:bold;">
+              Общая сумма по накладной: ${grandTotal} ₽
+            </td>
+          </tr>` : ""}
 
-      </table>
+        </table>
 
-      <div style="display:flex; justify-content:space-between; margin-top:20px;">
-        <div style="width:45%;">
-          Сдал:
-          <div style="border-bottom:1px solid black; margin-top:20px;"></div>
-          <div style="font-size:10px;">подпись / расшифровка</div>
+        <div style="display:flex; justify-content:space-between; margin-top:40px; font-size:12px;">
+          <div style="width:45%;">
+            <div>Сдал:</div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <div style="flex:1; border-bottom:1px solid black;"></div>
+              <div style="flex:1; border-bottom:1px solid black;"></div>
+            </div>
+            <div style="display:flex; gap:10px; font-size:10px;">
+              <div style="flex:1;">подпись</div>
+              <div style="flex:1;">расшифровка подписи</div>
+            </div>
+          </div>
+
+          <div style="width:45%;">
+            <div>Принял:</div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <div style="flex:1; border-bottom:1px solid black;"></div>
+              <div style="flex:1; border-bottom:1px solid black;"></div>
+            </div>
+            <div style="display:flex; gap:10px; font-size:10px;">
+              <div style="flex:1;">подпись</div>
+              <div style="flex:1;">расшифровка подписи</div>
+            </div>
+          </div>
         </div>
 
-        <div style="width:45%;">
-          Принял:
-          <div style="border-bottom:1px solid black; margin-top:20px;"></div>
-          <div style="font-size:10px;">подпись / расшифровка</div>
-        </div>
       </div>
-    </div>
     `;
   }
 
@@ -314,50 +325,17 @@ function getPrintHTML() {
   <head>
     <style>
       @page { size: A4; margin: 0; }
-      body { margin: 0; font-family: Arial; }
-
-      .page {
-        width:190mm;
-        height:277mm;
-        padding:10mm;
-        box-sizing:border-box;
-        page-break-after: always;
-      }
-
-      .page:last-child {
-        page-break-after: auto;
-      }
-
-      .doc {
-        height:130mm;
-      }
-
-      table {
-        width:100%;
-        border-collapse:collapse;
-        border:2px solid black;
-        font-size:12px;
-      }
-
-      th,td {
-        border:1px solid black;
-        padding:5px;
-        text-align:center;
-      }
-
-      .cut {
-        border-top:2px dashed black;
-        margin:8mm 0;
-      }
+      body { font-family: Arial; margin: 0; }
+      .page { width:210mm; height:297mm; padding:10mm; box-sizing:border-box; }
+      table { width:100%; border-collapse:collapse; border:2px solid black; font-size:12px; }
+      th,td { border:1px solid black; padding:5px; text-align:center; }
+      .cut { border-top:2px dashed black; margin:10mm 0; }
+      .date { text-align:right; }
     </style>
   </head>
-  <body>
-    ${pages}
-  </body>
-  </html>
-  `;
+  <body>${pages}</body>
+  </html>`;
 }
-
 
 // ===== печать =====
 window.printOrder = function() {
