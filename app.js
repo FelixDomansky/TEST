@@ -260,7 +260,8 @@ function getPrintHTML() {
           <tr>
             <td colspan="6" style="text-align:left;">
               <b>Итого:</b> ${total} ₽
-              <br>${numberToText(total)}
+              <br>
+              ${numberToText(total)}
             </td>
           </tr>
 
@@ -269,36 +270,30 @@ function getPrintHTML() {
             <td colspan="6" style="text-align:left; font-weight:bold;">
               Общая сумма по накладной: ${grandTotal} ₽
             </td>
-          </tr>` : ""}
+          </tr>
+          ` : ""}
 
         </table>
 
-        <div style="display:flex; justify-content:space-between; margin-top:40px; font-size:12px;">
-          <div style="width:45%;">
-            <div>Сдал:</div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-              <div style="flex:1; border-bottom:1px solid black;"></div>
-              <div style="flex:1; border-bottom:1px solid black;"></div>
-            </div>
-            <div style="display:flex; gap:10px; font-size:10px;">
-              <div style="flex:1;">подпись</div>
-              <div style="flex:1;">расшифровка подписи</div>
+        <div class="sign">
+          <div class="sign-block">
+            Сдал:
+            <div class="line"></div>
+            <div class="sub">
+              <span>подпись</span>
+              <span>расшифровка подписи</span>
             </div>
           </div>
 
-          <div style="width:45%;">
-            <div>Принял:</div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-              <div style="flex:1; border-bottom:1px solid black;"></div>
-              <div style="flex:1; border-bottom:1px solid black;"></div>
-            </div>
-            <div style="display:flex; gap:10px; font-size:10px;">
-              <div style="flex:1;">подпись</div>
-              <div style="flex:1;">расшифровка подписи</div>
+          <div class="sign-block">
+            Принял:
+            <div class="line"></div>
+            <div class="sub">
+              <span>подпись</span>
+              <span>расшифровка подписи</span>
             </div>
           </div>
         </div>
-
       </div>
     `;
   }
@@ -326,15 +321,68 @@ function getPrintHTML() {
     <style>
       @page { size: A4; margin: 0; }
       body { font-family: Arial; margin: 0; }
-      .page { width:210mm; height:297mm; padding:10mm; box-sizing:border-box; }
-      table { width:100%; border-collapse:collapse; border:2px solid black; font-size:12px; }
-      th,td { border:1px solid black; padding:5px; text-align:center; }
-      .cut { border-top:2px dashed black; margin:10mm 0; }
+
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 10mm;
+        box-sizing: border-box;
+      }
+
+      .doc {
+        height: 135mm;
+      }
+
+      table {
+        width:100%;
+        border-collapse:collapse;
+        border:2px solid black;
+        font-size:12px;
+      }
+
+      th,td {
+        border:1px solid black;
+        padding:5px;
+        text-align:center;
+      }
+
+      .sign {
+        margin-top:15px;
+        display:flex;
+        justify-content:space-between;
+      }
+
+      .sign-block {
+        width:45%;
+        font-size:12px;
+      }
+
+      .line {
+        border-bottom:1px solid black;
+        height:20px;
+        margin-top:5px;
+      }
+
+      .sub {
+        display:flex;
+        justify-content:space-between;
+        font-size:10px;
+      }
+
       .date { text-align:right; }
+
+      .cut {
+        height:5mm;
+        border-top:2px dashed black;
+        margin:5mm 0;
+      }
     </style>
   </head>
-  <body>${pages}</body>
-  </html>`;
+  <body>
+    ${pages}
+  </body>
+  </html>
+  `;
 }
 
 // ===== печать =====
