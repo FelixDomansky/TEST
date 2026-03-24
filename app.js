@@ -371,30 +371,32 @@ window.printOrder = function() {
 // ===== PDF =====
 window.downloadPDF = function() {
 
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  document.body.appendChild(iframe);
+  const rawHTML = getPrintHTML();
+  const bodyContent = rawHTML.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1];
 
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(getPrintHTML());
-  doc.close();
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-9999px";
 
-  iframe.onload = function() {
+  // 🔥 ЗАМЕНА mm → px (ключ!)
+  container.innerHTML = bodyContent
+    .replace(/190mm/g, "794px")
+    .replace(/277mm/g, "1123px")
+    .replace(/10mm/g, "20px")
+    .replace(/8mm/g, "15px")
+    .replace(/130mm/g, "500px");
 
-    const pages = iframe.contentWindow.document.querySelectorAll(".page");
+  document.body.appendChild(container);
 
-    html2pdf().set({
-      margin: 0,
-      filename: 'nakladnaya.pdf',
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'mm', format: 'a4' }
-    }).from(pages).save();
+  html2pdf().set({
+    margin: 0,
+    filename: 'nakladnaya.pdf',
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'px', format: [794, 1123] }
+  }).from(container).save().then(() => {
+    document.body.removeChild(container);
+  });
 
-    setTimeout(() => document.body.removeChild(iframe), 1000);
-  };
 };
 
 
