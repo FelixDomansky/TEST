@@ -16,7 +16,6 @@ function loadProducts() {
 }
 loadProducts();
 
-
 function numberToText(num) {
   if (!num) return "ноль рублей";
 
@@ -64,7 +63,6 @@ function numberToText(num) {
   let rub = Math.floor(num);
   let result = "";
 
-  // МИЛЛИОНЫ
   if (rub >= 1000000) {
     let millions = Math.floor(rub / 1000000);
     result += parse(millions);
@@ -72,7 +70,6 @@ function numberToText(num) {
     rub %= 1000000;
   }
 
-  // ТЫСЯЧИ
   if (rub >= 1000) {
     let thousands = Math.floor(rub / 1000);
     result += parse(thousands, true);
@@ -80,7 +77,6 @@ function numberToText(num) {
     rub %= 1000;
   }
 
-  // ОСТАТОК
   result += parse(rub);
   result += plural(Math.floor(num), "рубль", "рубля", "рублей");
 
@@ -114,7 +110,6 @@ window.selectProduct = function(article, price) {
   document.getElementById("suggestions").innerHTML = "";
 };
 
-
 // ===== ENTER =====
 document.getElementById("search").addEventListener("keydown", function(e) {
   if (e.key === "Enter") {
@@ -131,7 +126,6 @@ document.getElementById("qty").addEventListener("keydown", function(e) {
     addItem();
   }
 });
-
 
 // ===== добавить =====
 window.addItem = function() {
@@ -150,13 +144,11 @@ window.addItem = function() {
   render();
 };
 
-
 // ===== удалить =====
 window.removeItem = function(index) {
   order.splice(index, 1);
   render();
 };
-
 
 // ===== обновление =====
 window.updateQty = function(index, input) {
@@ -183,7 +175,6 @@ window.updateName = function(index, input) {
   }
 };
 
-
 // ===== пересчёт =====
 function updateRowAndTotal(item, index) {
   const sumEl = item.querySelector("b");
@@ -194,7 +185,6 @@ function updateRowAndTotal(item, index) {
 
   document.getElementById("total").innerText = "Итого: " + total + " ₽";
 }
-
 
 // ===== render =====
 function render() {
@@ -211,12 +201,10 @@ function render() {
 
     div.innerHTML = `
       <div class="item-number">№${index + 1}</div>
-
       <input value="${i.name}" onchange="updateName(${index}, this)">
       <input value="${i.qty}" type="number" oninput="updateQty(${index}, this)">
       <input value="${i.price}" type="number" oninput="updatePrice(${index}, this)">
       <b>${i.price * i.qty} ₽</b>
-
       <button onclick="removeItem(${index})">Удалить</button>
     `;
 
@@ -226,8 +214,7 @@ function render() {
   document.getElementById("total").innerText = "Итого: " + total + " ₽";
 }
 
-
-// ===== НАКЛАДНАЯ (ФИКС ПЕЧАТИ) =====
+// ===== НАКЛАДНАЯ =====
 function getPrintHTML() {
 
   const name = document.getElementById("name").value;
@@ -355,57 +342,19 @@ function getPrintHTML() {
   <html>
   <head>
     <meta charset="utf-8">
-    <title></title>
-
     <style>
-      @page {
-        size: A4;
-        margin: 0;
-      }
-
-      html, body {
-        margin: 0;
-        padding: 0;
-      }
-
-      body {
-        font-family: Arial;
-      }
-
-      .page {
-        width:210mm;
-        height:297mm;
-        padding:10mm;
-        box-sizing:border-box;
-      }
-
-      table {
-        width:100%;
-        border-collapse:collapse;
-        border:2px solid black;
-        font-size:12px;
-      }
-
-      th,td {
-        border:1px solid black;
-        padding:5px;
-        text-align:center;
-      }
-
-      .cut {
-        border-top:2px dashed black;
-        margin:10mm 0;
-      }
-
-      .date {
-        text-align:right;
-      }
+      @page { size: A4; margin: 0; }
+      body { font-family: Arial; margin: 0; }
+      .page { width:210mm; height:297mm; padding:10mm; box-sizing:border-box; }
+      table { width:100%; border-collapse:collapse; border:2px solid black; font-size:12px; }
+      th,td { border:1px solid black; padding:5px; text-align:center; }
+      .cut { border-top:2px dashed black; margin:10mm 0; }
+      .date { text-align:right; }
     </style>
   </head>
   <body>${pages}</body>
   </html>`;
 }
-
 
 // ===== печать =====
 window.printOrder = function() {
@@ -413,7 +362,6 @@ window.printOrder = function() {
   iframe.style.position = "fixed";
   iframe.style.width = "0";
   iframe.style.height = "0";
-  iframe.style.border = "0";
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow.document;
@@ -421,27 +369,34 @@ window.printOrder = function() {
   doc.write(getPrintHTML());
   doc.close();
 
-  iframe.contentWindow.focus();
   iframe.contentWindow.print();
 
   setTimeout(() => document.body.removeChild(iframe), 1000);
 };
 
-
 // ===== PDF =====
 window.downloadPDF = function() {
-  const element = document.createElement("div");
-  element.innerHTML = getPrintHTML();
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(getPrintHTML());
+  doc.close();
 
   html2pdf().set({
     margin: 0,
     html2canvas: { scale: 2 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  }).from(element).save(
+  }).from(doc.body).save(
     `Накладная_${document.getElementById("invoiceNumber").value || ""}.pdf`
   );
-};
 
+  setTimeout(() => document.body.removeChild(iframe), 1000);
+};
 
 // ===== очистка =====
 window.clearOrder = function() {
