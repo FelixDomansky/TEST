@@ -371,34 +371,17 @@ window.printOrder = function() {
 // ===== PDF =====
 window.downloadPDF = function() {
 
-  const rawHTML = getPrintHTML();
-  const bodyContent = rawHTML.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1];
+  const win = window.open("", "_blank");
 
-  const container = document.createElement("div");
-  container.style.position = "fixed";
-  container.style.left = "-9999px";
+  win.document.write(getPrintHTML());
+  win.document.close();
 
-  // 🔥 ЗАМЕНА mm → px (ключ!)
-  container.innerHTML = bodyContent
-    .replace(/190mm/g, "794px")
-    .replace(/277mm/g, "1123px")
-    .replace(/10mm/g, "20px")
-    .replace(/8mm/g, "15px")
-    .replace(/130mm/g, "500px");
-
-  document.body.appendChild(container);
-
-  html2pdf().set({
-    margin: 0,
-    filename: 'nakladnaya.pdf',
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'px', format: [794, 1123] }
-  }).from(container).save().then(() => {
-    document.body.removeChild(container);
-  });
+  setTimeout(() => {
+    win.focus();
+    win.print(); // 👉 тут выбираешь "Сохранить как PDF"
+  }, 300);
 
 };
-
 
 // ===== очистка =====
 window.clearOrder = function() {
